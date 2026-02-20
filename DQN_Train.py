@@ -81,18 +81,14 @@ else:
 # -------------------------------------------------------------------------
 # 3. TRAINING LOOP
 # -------------------------------------------------------------------------
-# 1. Instantiate the callback
+# Instantiate the callback to log secrecy rate metrics to tensorboard
 metrics_callback = CustomMetricsCallback()
 
-# 2. Pass it to model.learn
 print('Starting Training...')
 model.learn(
     total_timesteps=total_timesteps,
-    callback=metrics_callback # <--- ADD THIS HERE
+    callback=metrics_callback
 )
-print('Training Complete.')
-print('Starting Training...')
-model.learn(total_timesteps=total_timesteps)
 print('Training Complete.')
 
 # -------------------------------------------------------------------------
