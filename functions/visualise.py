@@ -42,15 +42,22 @@ def visualise(W: ndarray, psf: float, bx: float, bz: float, ex: float, ez: float
 
     print(f"Computing SNR for psf={psf:.2f}...")
 
-    # Loop through grid
-    for i in range(X_grid.size):
-        row, col = np.unravel_index(i, X_grid.shape)
-        probe_loc = np.array([X_grid[row, col], 0.0, Z_grid[row, col]])
+    # 1. Stack the grid into a single (3, N) matrix of all probe locations
+    probe_locs = np.vstack((X_grid.ravel(), np.zeros(X_grid.size), Z_grid.ravel()))
 
-        h = get_channel(config, probe_loc)
-        rx_signal = (h.conj().T @ W).item()
-        sig_power = np.abs(rx_signal) ** 2
-        SNR_linear[row, col] = sig_power / config.noise_power_watts
+    # 2. Fetch all channels. Ensure each channel is explicitly shaped as (Nt, 1) before stacking
+    H_list = [get_channel(config, probe_locs[:, i]).reshape(-1, 1) for i in range(X_grid.size)]
+
+    # Combine all individual channels into one massive (Nt, N) matrix
+    H_matrix = np.hstack(H_list)
+
+    # 3. Vectorized Math: Calculate the received signal for the entire grid in one operation
+    # W.conj().T is shape (1, Nt), H_matrix is shape (Nt, N), Resulting rx_signals is shape (1, N)
+    rx_signals = W.conj().T @ H_matrix
+
+    # 4. Calculate power and reshape back to the 2D grid dimensions
+    sig_powers = np.abs(rx_signals) ** 2
+    SNR_linear = (sig_powers / config.noise_power_watts).reshape(X_grid.shape)
 
     SNR_dB = 10 * np.log10(SNR_linear + 1e-30)
     max_val = np.max(SNR_dB)
