@@ -23,23 +23,20 @@ def reset_function(config: Config):
 
     # 2. Initialize agent randomly
     start_beam_idx = np.random.randint(0, config.size_cb)
-    start_psf_idx = np.random.randint(0, len(config.psf_codebook))
-    start_psf = config.psf_codebook[start_psf_idx]
+    cx, _, cz = config.beam_focal_locs[start_beam_idx, :]
+    r_beam = np.sqrt(cx**2 + cz**2)
+    theta_beam = np.arctan2(cx, cz)
+    start_psf = np.random.rand()
 
     logged_signals = LoggedSignals(
         bob_loc=bob_loc,
         eve_loc=eve_loc,
-        current_beam_idx=start_beam_idx,
-        current_psf=start_psf,
+        ideal_r=r_beam,
+        ideal_theta=theta_beam,
+        ideal_psf=start_psf,
     )
 
-    # 3. Set initial observations
-    cx, _, cz = config.beam_focal_locs[start_beam_idx, :]
-
     # Absolute polar coordinates
-    r_beam = np.sqrt(cx**2 + cz**2)
-    theta_beam = np.arctan2(cx, cz)
-
     r_bob = np.sqrt(bx**2 + bz**2)
     theta_bob = np.arctan2(bx, bz)
 

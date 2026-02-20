@@ -11,6 +11,10 @@ show_plot_every_nth_steps: 500
 max_episodes: 1000
 max_steps_per_episode: 50
 
+# Max model steps
+max_r_step: 20
+max_theta_step: 10
+max_psf_step: 0.2
 
 # Noise
 BW: 100.0e+6          # Bandwidth (Hz)

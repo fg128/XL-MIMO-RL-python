@@ -6,7 +6,7 @@ os.environ["MKL_NUM_THREADS"] = "4"
 os.environ["OPENBLAS_NUM_THREADS"] = "4"
 import sys
 import numpy as np
-from stable_baselines3 import DQN
+from stable_baselines3 import SAC
 from gymnasium.wrappers import TimeLimit
 
 # Ensure the python/ directory is on the path for imports
@@ -26,7 +26,9 @@ save_file = 'trained_agent_3.zip'  # Where to save the trained model
 # 1. DEFINE REINFORCEMENT LEARNING ENVIRONMENT
 # -------------------------------------------------------------------------
 config = Config(yaml_path='config.yaml')
-env = TimeLimit(XLMIMOEnv(config=config), max_episode_steps=config.max_steps_per_episode)
+env = TimeLimit(
+    XLMIMOEnv(config=config),
+    max_episode_steps=config.max_steps_per_episode)
 
 # -------------------------------------------------------------------------
 # 2. DEFINE OR LOAD DQN AGENT
@@ -35,9 +37,7 @@ total_timesteps = config.max_episodes * config.max_steps_per_episode  # 50,000
 
 if model_file and os.path.isfile(model_file):
     print(f'Loading existing agent from {model_file}...')
-    model = DQN.load(model_file, env=env)
-    # Adjust epsilon for resuming training
-    model.exploration_rate = 0.5
+    model = SAC.load(model_file, env=env)
 
 else:
     print('No existing model found. Creating new DQN Agent...')
@@ -47,28 +47,23 @@ else:
     exploration_fraction = 9500 / total_timesteps
     log_dir = "./logs/"
 
-    model = DQN(
+    model = SAC(
         'MlpPolicy',
         env,
         # --- Network Architecture: 256-256 hidden layers ---
-        policy_kwargs=dict(net_arch=[256, 256]),
+        policy_kwargs=dict(net_arch=dict(
+            pi=[256, 256],
+            qf=[256, 256]
+        )),
 
         # --- Optimizer ---
         learning_rate=1e-4,
-        max_grad_norm=1.0,              # GradientThreshold
-
-        # --- DQN Hyperparameters ---
         gamma=0.99,                     # DiscountFactor
         tau=1e-3,                       # TargetSmoothFactor (soft update)
         target_update_interval=1,       # Soft update every step
         batch_size=256,                 # MiniBatchSize
         buffer_size=100_000,            # ExperienceBufferLength
         learning_starts=256,            # Start training after filling one batch
-
-        # --- Exploration Strategy ---
-        exploration_initial_eps=1.0,
-        exploration_final_eps=0.05,
-        exploration_fraction=exploration_fraction,
 
         # --- General ---
         train_freq=1,

@@ -37,6 +37,9 @@ class Config:
         self.resolution = raw['resolution']
         self.P_total_watts = raw['P_total_watts']
         self.show_plot_every_nth_steps = raw['show_plot_every_nth_steps']
+        self.max_r_step = raw['max_r_step']
+        self.max_theta_step = raw['max_theta_step']
+        self.max_psf_step = raw['max_psf_step']
         self.max_episodes = raw['max_episodes']
         self.max_steps_per_episode = raw['max_steps_per_episode']
 

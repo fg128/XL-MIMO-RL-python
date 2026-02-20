@@ -35,12 +35,17 @@ class XLMIMOEnv(gym.Env):
         # Observation space: [beam_focal_r, beam_focal_theta, psf, delta_bob_r, delta_bob_theta, delta_eve_r, delta_eve_theta]
         self.observation_space = spaces.Box(
             low=np.array([-1, 0, 0, -1, -1, -1, -1], dtype=np.float32),
-            high=np.array([1, 1, 1, 1, 1, 1, 1], dtype=np.float32),
+            high=np.array([+1, +1, +1, +1, +1, +1, +1], dtype=np.float32),
             dtype=np.float32,
         )
 
-        # Action space: 11 discrete actions (0-10)
-        self.action_space = spaces.Discrete(11)
+        # Action space : [delta_ideal_r, delta_ideal_theta, delta_psf]
+        self.action_space = spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(3,),
+            dtype=np.float32,
+        )
 
         self.logged_signals: LoggedSignals  = None # type: ignore
 
@@ -54,7 +59,7 @@ class XLMIMOEnv(gym.Env):
 
     def step(self, action):
         next_obs, reward, is_done, self.logged_signals, info = step_function(
-            int(action), self.logged_signals, self.config
+            action, self.logged_signals, self.config
         )
         truncated = False
         return next_obs, float(reward), bool(is_done), truncated, info

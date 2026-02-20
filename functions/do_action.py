@@ -1,8 +1,11 @@
-from functions.move_beam import move_beam
-from functions.move_psf import move_psf
+from classes.config import Config
+from classes.logged_signals import LoggedSignals
+
+import numpy as np
+from numpy import ndarray
 
 
-def do_action(action: int, curr_beam_idx: int, curr_psf_idx: int, size_cb: int, psf_N: int):
+def do_action(action: ndarray, logged_signals: LoggedSignals, config: Config):
     """Routes the DQN action decision to performing the action.
 
     Args:
@@ -16,38 +19,19 @@ def do_action(action: int, curr_beam_idx: int, curr_psf_idx: int, size_cb: int, 
         next_beam_idx: New beamforming codebook index (0-based).
         next_psf_idx:  New power splitting codebook index (0-based).
     """
-    next_beam_idx = curr_beam_idx
-    next_psf_idx = curr_psf_idx
+    # 1. Scale the continuous actions to physical step sizes
+    delta_r = action[0] * config.max_r_step
+    delta_theta = action[1] * config.max_theta_step
+    delta_psf = action[2] * config.max_psf_step
 
-    if action == 0:    # STAY
-        pass
-    elif action == 1:  # Angle +1
-        next_beam_idx = move_beam(curr_beam_idx, 'angle', +1, size_cb)
-    elif action == 2:  # Angle +10
-        next_beam_idx = move_beam(curr_beam_idx, 'angle', +10, size_cb)
-    elif action == 3:  # Angle +50
-        next_beam_idx = move_beam(curr_beam_idx, 'angle', +50, size_cb)
-    elif action == 4:  # Angle -1
-        next_beam_idx = move_beam(curr_beam_idx, 'angle', -1, size_cb)
-    elif action == 5:  # Angle -10
-        next_beam_idx = move_beam(curr_beam_idx, 'angle', -10, size_cb)
-    elif action == 6:  # Angle -50
-        next_beam_idx = move_beam(curr_beam_idx, 'angle', -50, size_cb)
-    elif action == 7:  # Range +1
-        next_beam_idx = move_beam(curr_beam_idx, 'range', +1, size_cb)
-    elif action == 8:  # Range +5
-        next_beam_idx = move_beam(curr_beam_idx, 'range', +10, size_cb)
-    elif action == 9:  # Range +50
-        next_beam_idx = move_beam(curr_beam_idx, 'range', +50, size_cb)
-    elif action == 10:  # Range +1
-        next_beam_idx = move_beam(curr_beam_idx, 'range', -1, size_cb)
-    elif action == 11:  # Range +5
-        next_beam_idx = move_beam(curr_beam_idx, 'range', -10, size_cb)
-    elif action == 12:  # Range +50
-        next_beam_idx = move_beam(curr_beam_idx, 'range', -50, size_cb)
-    elif action == 13:  # PSF +1
-        next_psf_idx = move_psf(curr_psf_idx, psf_N, False)
-    elif action == 14: # PSF -1
-        next_psf_idx = move_psf(curr_psf_idx, psf_N, True)
+    # 2. Update the IDEAL continuous state (Internal to the agent)
+    max_r = np.sqrt(config.max_x**2 + config.max_z**2)
 
-    return next_beam_idx, next_psf_idx
+    # Clip all so not out of bounds
+    ideal_r = np.clip(logged_signals.ideal_r + delta_r, 0.1, max_r)
+    ideal_theta = np.clip(logged_signals.ideal_theta + delta_theta, -np.pi/2, np.pi/2)
+    ideal_psf = np.clip(logged_signals.ideal_psf + delta_psf, 0.0, 1.0)
+
+    return ideal_r, ideal_theta, ideal_psf
+
+
