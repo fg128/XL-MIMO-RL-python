@@ -23,23 +23,31 @@ def do_action(action: int, curr_beam_idx: int, curr_psf_idx: int, size_cb: int, 
         pass
     elif action == 1:  # Angle +1
         next_beam_idx = move_beam(curr_beam_idx, 'angle', +1, size_cb)
-    elif action == 2:  # Angle +8
-        next_beam_idx = move_beam(curr_beam_idx, 'angle', +8, size_cb)
-    elif action == 3:  # Angle -1
+    elif action == 2:  # Angle +10
+        next_beam_idx = move_beam(curr_beam_idx, 'angle', +10, size_cb)
+    elif action == 3:  # Angle +50
+        next_beam_idx = move_beam(curr_beam_idx, 'angle', +50, size_cb)
+    elif action == 4:  # Angle -1
         next_beam_idx = move_beam(curr_beam_idx, 'angle', -1, size_cb)
-    elif action == 4:  # Angle -8
-        next_beam_idx = move_beam(curr_beam_idx, 'angle', -8, size_cb)
-    elif action == 5:  # Range +1
+    elif action == 5:  # Angle -10
+        next_beam_idx = move_beam(curr_beam_idx, 'angle', -10, size_cb)
+    elif action == 6:  # Angle -50
+        next_beam_idx = move_beam(curr_beam_idx, 'angle', -50, size_cb)
+    elif action == 7:  # Range +1
         next_beam_idx = move_beam(curr_beam_idx, 'range', +1, size_cb)
-    elif action == 6:  # Range +5
-        next_beam_idx = move_beam(curr_beam_idx, 'range', +5, size_cb)
-    elif action == 7:  # Range -1
+    elif action == 8:  # Range +5
+        next_beam_idx = move_beam(curr_beam_idx, 'range', +10, size_cb)
+    elif action == 9:  # Range +50
+        next_beam_idx = move_beam(curr_beam_idx, 'range', +50, size_cb)
+    elif action == 10:  # Range +1
         next_beam_idx = move_beam(curr_beam_idx, 'range', -1, size_cb)
-    elif action == 8:  # Range -5
-        next_beam_idx = move_beam(curr_beam_idx, 'range', -5, size_cb)
-    elif action == 9:  # PSF +1
+    elif action == 11:  # Range +5
+        next_beam_idx = move_beam(curr_beam_idx, 'range', -10, size_cb)
+    elif action == 12:  # Range +50
+        next_beam_idx = move_beam(curr_beam_idx, 'range', -50, size_cb)
+    elif action == 13:  # PSF +1
         next_psf_idx = move_psf(curr_psf_idx, psf_N, False)
-    elif action == 10: # PSF -1
+    elif action == 14: # PSF -1
         next_psf_idx = move_psf(curr_psf_idx, psf_N, True)
 
     return next_beam_idx, next_psf_idx
