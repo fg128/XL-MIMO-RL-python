@@ -123,18 +123,39 @@ def step_function(action: int, logged_signals: LoggedSignals, config: Config):
     logged_signals.current_psf = next_psf
 
     # 14. Next observation
-    delta_bob_x = (logged_signals.bob_loc[0] - current_focus_point[0]) / (2 * config.max_x)
-    delta_bob_z = (logged_signals.bob_loc[2] - current_focus_point[2]) / config.max_z
-    delta_eve_x = (logged_signals.eve_loc[0] - current_focus_point[0]) / (2 * config.max_x)
-    delta_eve_z = (logged_signals.eve_loc[2] - current_focus_point[2]) / config.max_z
+    bx, bz = logged_signals.bob_loc[0], logged_signals.bob_loc[2]
+    ex, ez = logged_signals.eve_loc[0], logged_signals.eve_loc[2]
+    cx, cz = current_focus_point[0], current_focus_point[2]
+
+    # Absolute polar coordinates
+    r_beam = np.sqrt(cx**2 + cz**2)
+    theta_beam = np.arctan2(cx, cz)
+
+    r_bob = np.sqrt(bx**2 + bz**2)
+    theta_bob = np.arctan2(bx, bz)
+
+    r_eve = np.sqrt(ex**2 + ez**2)
+    theta_eve = np.arctan2(ex, ez)
+
+    # Calculate polar deltas (How far is beam from Bob/Eve?)
+    delta_r_bob = r_bob - r_beam
+    delta_theta_bob = theta_bob - theta_beam
+
+    delta_r_eve = r_eve - r_beam
+    delta_theta_eve = theta_eve - theta_beam
+
+    # Normalization constants for stabilty
+    max_r = np.sqrt(config.max_x**2 + config.max_z**2)
+    max_theta_sweep = np.pi / 2 # ~90 degrees is plenty for the delta spread
 
     next_obs = np.array([
-        next_beam_idx / config.size_cb,
-        next_psf,
-        delta_bob_x,
-        delta_bob_z,
-        delta_eve_x,
-        delta_eve_z,
+        r_beam / max_r,                  # Absolute Beam Depth
+        theta_beam / max_theta_sweep,    # Absolute Beam Angle
+        next_psf,                        # Current Power Split
+        delta_r_bob / max_r,
+        delta_theta_bob / max_theta_sweep,
+        delta_r_eve / max_r,
+        delta_theta_eve / max_theta_sweep,
     ], dtype=np.float32)
 
     if _step_count % config.show_plot_every_nth_steps == 0:

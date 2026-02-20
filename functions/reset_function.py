@@ -13,13 +13,13 @@ def reset_function(config: Config):
         logged_signals: LoggedSignals object containing environment state.
     """
     # 1. Randomize Locations
-    b_x = (np.random.rand() - 0.5) * 2 * config.max_x
-    b_z = 20 + np.random.rand() * (config.max_z - 20)
-    bob_loc = np.array([b_x, 0.0, b_z])
+    bx = (np.random.rand() - 0.5) * 2 * config.max_x
+    bz = 20 + np.random.rand() * (config.max_z - 20)
+    bob_loc = np.array([bx, 0.0, bz])
 
-    e_x = b_x + (np.random.rand() - 0.5) * 20   # Eve +/-10m near Bob x
-    e_z = b_z + (np.random.rand() - 0.5) * 20    # Eve +/-10m near Bob z
-    eve_loc = np.array([e_x, 0.0, e_z])
+    ex = bx + (np.random.rand() - 0.5) * 20   # Eve +/-10m near Bob x
+    ez = bz + (np.random.rand() - 0.5) * 20    # Eve +/-10m near Bob z
+    eve_loc = np.array([ex, 0.0, ez])
 
     # 2. Initialize agent randomly
     start_beam_idx = np.random.randint(0, config.size_cb)
@@ -34,19 +34,37 @@ def reset_function(config: Config):
     )
 
     # 3. Set initial observations
-    current_focus_point = config.beam_focal_locs[start_beam_idx, :]
-    delta_bob_x = (logged_signals.bob_loc[0] - current_focus_point[0]) / (2 * config.max_x)
-    delta_bob_z = (logged_signals.bob_loc[2] - current_focus_point[2]) / config.max_z
-    delta_eve_x = (logged_signals.eve_loc[0] - current_focus_point[0]) / (2 * config.max_x)
-    delta_eve_z = (logged_signals.eve_loc[2] - current_focus_point[2]) / config.max_z
+    cx, _, cz = config.beam_focal_locs[start_beam_idx, :]
+
+    # Absolute polar coordinates
+    r_beam = np.sqrt(cx**2 + cz**2)
+    theta_beam = np.arctan2(cx, cz)
+
+    r_bob = np.sqrt(bx**2 + bz**2)
+    theta_bob = np.arctan2(bx, bz)
+
+    r_eve = np.sqrt(ex**2 + ez**2)
+    theta_eve = np.arctan2(ex, ez)
+
+    # Calculate polar deltas (how far is beam from Bob/Eve?)
+    delta_r_bob = r_bob - r_beam
+    delta_theta_bob = theta_bob - theta_beam
+
+    delta_r_eve = r_eve - r_beam
+    delta_theta_eve = theta_eve - theta_beam
+
+    # Normalization constants for stabilty
+    max_r = np.sqrt(config.max_x**2 + config.max_z**2)
+    max_theta_sweep = np.pi / 2 # ~90 degrees the delta spread
 
     initial_obs = np.array([
-        start_beam_idx / config.size_cb,
-        start_psf,
-        delta_bob_x,
-        delta_bob_z,
-        delta_eve_x,
-        delta_eve_z,
+        r_beam / max_r,                  # Absolute Beam Depth
+        theta_beam / max_theta_sweep,    # Absolute Beam Angle
+        start_psf,                        # Current Power Split
+        delta_r_bob / max_r,            # Distance from Bob
+        delta_theta_bob / max_theta_sweep,
+        delta_r_eve / max_r,
+        delta_theta_eve / max_theta_sweep,
     ], dtype=np.float32)
 
     return initial_obs, logged_signals
