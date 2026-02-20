@@ -14,10 +14,29 @@ _RUN_DIR = None
 def get_run_directory():
     global _RUN_DIR
     if _RUN_DIR is None:
-        # Create a unique folder name like: run_20231027_143005
+        log_dir = "logs" # Make sure this matches your SB3 tensorboard_log path
+        latest_run_name = "run" # Fallback just in case logs don't exist yet
+
+        if os.path.exists(log_dir):
+            # Find all subfolders in the logs directory
+            subdirs = [d for d in os.listdir(log_dir) if os.path.isdir(os.path.join(log_dir, d))]
+
+            max_num = -1
+            for d in subdirs:
+                # SB3 automatically names folders like "DQN_1", "DQN_12", etc.
+                parts = d.split('_')
+                if len(parts) >= 2 and parts[-1].isdigit():
+                    num = int(parts[-1])
+                    if num > max_num:
+                        max_num = num
+                        latest_run_name = d  # Captures the full name, e.g., "DQN_12"
+
+        # Combine the log name with the current time
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        _RUN_DIR = f"training_results/run_{timestamp}"
+        _RUN_DIR = f"training_results/{latest_run_name}_{timestamp}"
+
         os.makedirs(_RUN_DIR, exist_ok=True)
+
     return _RUN_DIR
 
 
