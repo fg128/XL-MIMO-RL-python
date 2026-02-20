@@ -1,4 +1,3 @@
-import keyboard
 import numpy as np
 
 from functions.do_action import do_action
@@ -9,7 +8,6 @@ from functions.visualise import visualise
 
 # Global toggles
 _step_count = 0
-_verbose_reward = False
 
 
 def step_function(action: int, logged_signals: LoggedSignals, config: Config):
@@ -28,11 +26,6 @@ def step_function(action: int, logged_signals: LoggedSignals, config: Config):
     """
     global _step_count, _verbose_reward
     _step_count += 1
-
-    # Check for keypress 'v' to toggle verbose mode
-    if keyboard.is_pressed('v'):
-        _verbose_reward = not _verbose_reward
-        print(f"\n>>> Verbose Reward: {'ON' if _verbose_reward else 'OFF'}\n")
 
     # 1. Unpack current state
     curr_beam_idx = logged_signals.current_beam_idx
@@ -123,8 +116,7 @@ def step_function(action: int, logged_signals: LoggedSignals, config: Config):
     reward = SR - db + de + close_to_bob_bonus
     is_done = False
 
-    if _verbose_reward:
-        print(f"[SR={SR:.4f}, db={db:.4f}, de={de:.4f}, bonus={close_to_bob_bonus:.2f}, R={reward:.4f}, psf={next_psf:.2f}]")
+    # print(f"[SR={SR:.4f}, db={db:.4f}, de={de:.4f}, bonus={close_to_bob_bonus:.2f}, R={reward:.4f}, psf={next_psf:.2f}]")
 
     # 13. Update logged signals
     logged_signals.current_beam_idx = next_beam_idx
@@ -146,8 +138,14 @@ def step_function(action: int, logged_signals: LoggedSignals, config: Config):
     ], dtype=np.float32)
 
     if _step_count % config.show_plot_every_nth_steps == 0:
-        visualise(W, next_psf, bx, bz, ex, ez, config)
+        visualise(W, next_psf, bx, bz, ex, ez, config, _step_count)
         print(f"PSF: {next_psf}, Beam IDX: {next_beam_idx}")
         print(f"Focus Point: {current_focus_point}")
 
-    return next_obs, reward, is_done, logged_signals
+    info = {
+        "secrecy_rate": secrecy_rate,
+        "dist_to_bob": dist_to_bob,
+        "dist_to_eve": dist_to_eve
+    }
+
+    return next_obs, reward, is_done, logged_signals, info

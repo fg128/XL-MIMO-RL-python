@@ -53,8 +53,8 @@ class XLMIMOEnv(gym.Env):
         return initial_obs, {}
 
     def step(self, action):
-        next_obs, reward, is_done, self.logged_signals = step_function(
+        next_obs, reward, is_done, self.logged_signals, info = step_function(
             int(action), self.logged_signals, self.config
         )
         truncated = False
-        return next_obs, float(reward), bool(is_done), truncated, {}
+        return next_obs, float(reward), bool(is_done), truncated, info

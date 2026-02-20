@@ -7,7 +7,7 @@ max_x: 70             # Maximum +/- lateral simulation distance (m)
 max_z: 70             # Maximum simulation depth (m)
 resolution: 0.5       # Resolution of probing
 P_total_watts: 10     # Total transmit power (W)
-show_plot_every_nth_steps: 2500
+show_plot_every_nth_steps: 500
 max_episodes: 1000
 max_steps_per_episode: 50
 

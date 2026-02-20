@@ -1,4 +1,9 @@
 import os
+
+from classes.custom_metrics_callback import CustomMetricsCallback
+os.environ["OMP_NUM_THREADS"] = "4"
+os.environ["MKL_NUM_THREADS"] = "4"
+os.environ["OPENBLAS_NUM_THREADS"] = "4"
 import sys
 import numpy as np
 from stable_baselines3 import DQN
@@ -76,6 +81,16 @@ else:
 # -------------------------------------------------------------------------
 # 3. TRAINING LOOP
 # -------------------------------------------------------------------------
+# 1. Instantiate the callback
+metrics_callback = CustomMetricsCallback()
+
+# 2. Pass it to model.learn
+print('Starting Training...')
+model.learn(
+    total_timesteps=total_timesteps,
+    callback=metrics_callback # <--- ADD THIS HERE
+)
+print('Training Complete.')
 print('Starting Training...')
 model.learn(total_timesteps=total_timesteps)
 print('Training Complete.')
