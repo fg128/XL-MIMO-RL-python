@@ -1,0 +1,22 @@
+# XL-MIMO Environment Configuration
+
+# General
+fc: 28.0e+9           # Carrier frequency (Hz)
+Nt: 1024              # Number of antennas
+max_x: 70             # Maximum +/- lateral simulation distance (m)
+max_z: 70             # Maximum simulation depth (m)
+resolution: 0.5       # Resolution of probing
+P_total_watts: 10     # Total transmit power (W)
+show_plot_every_nth_steps: 2500
+max_episodes: 1000
+max_steps_per_episode: 50
+
+
+# Noise
+BW: 100.0e+6          # Bandwidth (Hz)
+NF_dB: 10             # Noise figure (dB)
+T_temp: 290           # Noise temperature (K)
+
+# Codebook
+psf_N: 10             # 1/N linear spacing of power-splitting factor codebook
+size_cb: 1024         # Size of beam-forming codebook
