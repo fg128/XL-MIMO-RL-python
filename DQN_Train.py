@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from classes.config import Config
 from XL_MIMO_Enviroment import XLMIMOEnv
+from functions.step_function import start_verbose_toggle
 
 
 # -------------------------------------------------------------------------
@@ -33,7 +34,7 @@ env = TimeLimit(
 # -------------------------------------------------------------------------
 # 2. DEFINE OR LOAD DQN AGENT
 # -------------------------------------------------------------------------
-total_timesteps = config.max_episodes * config.max_steps_per_episode  # 50,000
+total_timesteps = config.max_episodes * config.max_steps_per_episode
 
 if model_file and os.path.isfile(model_file):
     print(f'Loading existing agent from {model_file}...')
@@ -44,7 +45,7 @@ else:
 
     # Epsilon decay: MATLAB EpsilonDecay=1e-4 per step
     # ~9500 steps to go from 1.0 to 0.05
-    exploration_fraction = 9500 / total_timesteps
+    exploration_fraction = 50_000 / total_timesteps
     log_dir = "./logs/"
 
     model = SAC(
@@ -79,6 +80,8 @@ else:
 # Instantiate the callback to log secrecy rate metrics to tensorboard
 metrics_callback = CustomMetricsCallback()
 
+start_verbose_toggle()
+print("Press 'v' during training to toggle verbose output. Press 'c' to save a checkpoint.")
 print('Starting Training...')
 model.learn(
     total_timesteps=total_timesteps,

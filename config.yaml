@@ -7,14 +7,14 @@ max_x: 70             # Maximum +/- lateral simulation distance (m)
 max_z: 70             # Maximum simulation depth (m)
 resolution: 0.5       # Resolution of probing
 P_total_watts: 10     # Total transmit power (W)
-show_plot_every_nth_steps: 500
-max_episodes: 1000
-max_steps_per_episode: 50
+show_plot_every_nth_steps: 5000
+max_episodes: 2000
+max_steps_per_episode: 100
 
 # Max model steps
-max_r_step: 20
-max_theta_step: 10
-max_psf_step: 0.2
+max_r_step: 20       # Meters, max change in focal point position per step
+max_theta_step: 0.05 # Radians, ~2.8 degrees
+max_psf_step: 0.1    # Linear, max change in power-splitting factor per step (0.2 corresponds to 20% change)
 
 # Noise
 BW: 100.0e+6          # Bandwidth (Hz)

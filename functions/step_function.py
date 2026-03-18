@@ -1,3 +1,8 @@
+import sys
+import select
+import termios
+import tty
+import threading
 import numpy as np
 from numpy import ndarray
 
@@ -9,6 +14,37 @@ from functions.visualise import visualise
 
 # Global toggles
 _step_count = 0
+_verbose = False
+_save_checkpoint = False
+
+
+def start_verbose_toggle():
+    """Start a background daemon thread that listens for keypresses:
+      'v' — toggle verbose per-step output
+      'c' — request a model checkpoint save
+    """
+    def _listen():
+        global _verbose, _save_checkpoint
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setcbreak(fd)
+            while True:
+                ready, _, _ = select.select([sys.stdin], [], [], 0.1)
+                if ready:
+                    ch = sys.stdin.read(1)
+                    if ch == 'v':
+                        _verbose = not _verbose
+                        state = "ON" if _verbose else "OFF"
+                        print(f"\n[Verbose {state}]\n")
+                    elif ch == 'c':
+                        _save_checkpoint = True
+                        print("\n[Checkpoint requested...]\n")
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    t = threading.Thread(target=_listen, daemon=True)
+    t.start()
 
 
 def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config):
@@ -34,14 +70,30 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
     # Convert ideal polar to ideal cartesian to search the codebook easy
     ideal_x = ideal_r * np.sin(ideal_theta)
     ideal_z = ideal_r * np.cos(ideal_theta)
-    ideal_point = np.array([ideal_x, 0, ideal_z])
+    current_focus_point = np.array([ideal_x, 0, ideal_z])
 
-    # SNAP TO REALITY: Find the physically closest codebook index to ideal location
-    distances_to_codebook = np.linalg.norm(config.beam_focal_locs - ideal_point, axis=1)
-    next_beam_idx = int(np.argmin(distances_to_codebook))
+    # --- USW Weight Calculation ---
+    # 1. Distance from every antenna to this focal point
+    dist_from_target_to_antennas = np.sqrt(
+        np.sum((config.pos - current_focus_point[:, np.newaxis]) ** 2, axis=0)
+    )
 
-    # 2. Update beam & power splitting factor from codebooks
-    W = config.w_beam_codebook[:, next_beam_idx].reshape(-1, 1)  # (Nt, 1)
+    # 2. Distance from array center to focal point (Reference)
+    # r_center = np.linalg.norm(current_focus_point)
+
+    # 3. Calculate Phase (USW Model) [Cite: Eq 20]
+    # We use (d_vec - r_center) to normalize phase at the array center
+    response_vector = np.exp(-1j * config.k * dist_from_target_to_antennas)
+
+    # 5. Normalize Power (Norm = 1)
+    W = response_vector / np.linalg.norm(response_vector)
+
+    # # SNAP TO REALITY: Find the physically closest codebook index to ideal location
+    # distances_to_codebook = np.linalg.norm(config.beam_focal_locs - ideal_point, axis=1)
+    # next_beam_idx = int(np.argmin(distances_to_codebook))
+
+    # # 2. Update beam & power splitting factor from codebooks
+    # W = config.w_beam_codebook[:, next_beam_idx].reshape(-1, 1)  # (Nt, 1)
     psf = ideal_psf
 
     # 3. Power allocation between signal and AN
@@ -92,18 +144,23 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
     secrecy_rate = max(0.0, rate_bob - rate_eve)
 
     # 10. Distance from beam focal point to Bob and Eve
-    current_focus_point = config.beam_focal_locs[next_beam_idx, :]
+    # current_focus_point = config.beam_focal_locs[next_beam_idx, :]
     dist_to_bob = np.linalg.norm(current_focus_point - logged_signals.bob_loc)
     dist_to_eve = np.linalg.norm(current_focus_point - logged_signals.eve_loc)
 
     # 11. Reward
-    SR = secrecy_rate / 8        # Secrecy rate component
-    close_to_bob_bonus = 0.5 * np.exp(-15 * dist_to_bob)
-    reward = SR + close_to_bob_bonus
+    SR = secrecy_rate      # Secrecy rate component
+    k = 0.02
+    penalty_distance = 40 # Distance at which the bonus becomes negative
+    close_to_bob_bonus = (np.exp(-dist_to_bob * k) - np.exp(-penalty_distance * k))/(1 - np.exp(-penalty_distance * k))  # Bonus for being closer to Bob than Eve
+    reward = SR + 15*close_to_bob_bonus
+    reward /= 35 # Normalization factor to keep rewards in a reasonable range [0, 1]
 
     is_done = False
 
     # print(f"[SR={SR:.4f}, db={db:.4f}, de={de:.4f}, bonus={close_to_bob_bonus:.2f}, R={reward:.4f}, psf={next_psf:.2f}]")
+    if _verbose:
+        print(f"[VERBOSE] Reward: {reward:.4f} | PSF: {psf:.3f} | FocalPt: ({current_focus_point[0]:.2f}, 0, {current_focus_point[2]:.2f}) | Dist2Bob: {dist_to_bob:.2f}m")
 
     # 12. Next observation
     bx, bz = logged_signals.bob_loc[0], logged_signals.bob_loc[2]
@@ -132,7 +189,7 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
     next_obs = np.array([
         r_beam / max_r,                  # Absolute Beam Depth
         theta_beam / max_theta_sweep,    # Absolute Beam Angle
-        psf,                        # Current Power Split
+        psf,                             # Current Power Split
         delta_r_bob / max_r,
         delta_theta_bob / max_theta_sweep,
         delta_r_eve / max_r,
@@ -141,7 +198,7 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
 
     if _step_count % config.show_plot_every_nth_steps == 0:
         visualise(W, psf, bx, bz, ex, ez, config, _step_count)
-        print(f"PSF: {psf}, Beam IDX: {next_beam_idx}")
+        # print(f"PSF: {psf}, Beam IDX: {next_beam_idx}")
         print(f"Focus Point: {current_focus_point}")
 
     # 15. Pass info to next iteration

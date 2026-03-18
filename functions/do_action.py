@@ -9,7 +9,7 @@ def do_action(action: ndarray, logged_signals: LoggedSignals, config: Config):
     """Routes the DQN action decision to performing the action.
 
     Args:
-        action:        Action chosen by DQN (0=Stay, 1-8=Move beam, 9-10=Power).
+        action:        Action chosen by SAC.
         curr_beam_idx: Current beamforming codebook index (0-based).
         curr_psf_idx:  Current power splitting codebook index (0-based).
         size_cb:       Total size of the codebook (e.g., 1024).

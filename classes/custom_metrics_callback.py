@@ -1,3 +1,4 @@
+import functions.step_function as step_fn
 from stable_baselines3.common.callbacks import BaseCallback
 
 class CustomMetricsCallback(BaseCallback):
@@ -14,5 +15,11 @@ class CustomMetricsCallback(BaseCallback):
             self.logger.record('metrics/secrecy_rate', info['secrecy_rate'])
             self.logger.record('metrics/dist_to_bob', info['dist_to_bob'])
             self.logger.record('metrics/dist_to_eve', info['dist_to_eve'])
+
+        if step_fn._save_checkpoint:
+            step_fn._save_checkpoint = False
+            path = f"checkpoint_{self.num_timesteps}.zip"
+            self.model.save(path)
+            print(f"\n[Checkpoint saved → {path}]")
 
         return True
