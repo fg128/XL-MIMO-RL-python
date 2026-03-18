@@ -23,8 +23,8 @@ def reset_function(config: Config):
 
     # 2. Initialize agent randomly
     start_beam_idx = np.random.randint(0, config.size_cb)
-    start_psf_idx = np.random.randint(0, len(config.psf_codebook))
-    start_psf = config.psf_codebook[start_psf_idx]
+    start_psf = np.random.rand()  # Random PSF between 0 and 1 rounded to nearest 0.01
+    start_psf = np.round(start_psf, 2)
 
     logged_signals = LoggedSignals(
         bob_loc=bob_loc,

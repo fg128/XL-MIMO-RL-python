@@ -39,8 +39,8 @@ class XLMIMOEnv(gym.Env):
             dtype=np.float32,
         )
 
-        # Action space: 11 discrete actions (0-10)
-        self.action_space = spaces.Discrete(11)
+        # Action space: 11 discrete actions (0-12)
+        self.action_space = spaces.Discrete(13)
 
         self.logged_signals: LoggedSignals  = None # type: ignore
 

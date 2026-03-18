@@ -1,18 +1,14 @@
-def move_psf(current_psf_idx: int, psf_N: int, is_decrement: bool):
-    """Changes the index of power splitting codebook by +/-1.
+def move_psf(current_psf: float, change_by: float):
+    """Changes the power splitting factor by a specified amount.
 
     Args:
-        current_psf_idx: Current index of power splitting codebook.
-        psf_N:           1/N linear spaing of psf codebook.
-        is_decrement:    If True, decrease idx by 1; else increase by 1.
+        current_psf: Current power splitting factor.
+        change_by:   Amount to change the power splitting factor by.
 
     Returns:
-        next_psf_idx: New power splitting factor index.
+        next_psf: New power splitting factor.
     """
-    if is_decrement:
-        next_psf_idx = current_psf_idx - 1
-    else:
-        next_psf_idx = current_psf_idx + 1
+    next_psf = current_psf + change_by
+    next_psf = max(0.0, min(next_psf, 1.0))  # Clamp between 0 and 1
+    return next_psf
 
-    next_psf_idx = max(0, min(next_psf_idx, psf_N)) # Clamp
-    return next_psf_idx

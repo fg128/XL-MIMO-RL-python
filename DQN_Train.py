@@ -5,6 +5,10 @@ os.environ["OMP_NUM_THREADS"] = "4"
 os.environ["MKL_NUM_THREADS"] = "4"
 os.environ["OPENBLAS_NUM_THREADS"] = "4"
 import sys
+import threading
+import time
+import tty
+import termios
 import numpy as np
 from stable_baselines3 import DQN
 from gymnasium.wrappers import TimeLimit
@@ -14,13 +18,46 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from classes.config import Config
 from XL_MIMO_Enviroment import XLMIMOEnv
+import functions.step_function as _sf
+
+
+def _start_keyboard_listener(stop_event: threading.Event):
+    """Start a background thread that handles keypresses during training.
+
+    'v' toggles per-step verbose output.
+    'q' signals training to stop and save.
+    """
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+
+    def _listen():
+        try:
+            tty.setcbreak(fd)
+            while not stop_event.is_set():
+                ch = sys.stdin.read(1)
+                if ch == 'v':
+                    _sf._verbose = not _sf._verbose
+                    state = "ON" if _sf._verbose else "OFF"
+                    sys.stdout.write(f"\n[Verbose: {state}]\n")
+                    sys.stdout.flush()
+                elif ch == 'q':
+                    sys.stdout.write("\n[Stopping training and saving model...]\n")
+                    sys.stdout.flush()
+                    stop_event.set()
+        except Exception:
+            pass
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    t = threading.Thread(target=_listen, daemon=True)
+    t.start()
 
 
 # -------------------------------------------------------------------------
 # Configuration
 # -------------------------------------------------------------------------
 model_file = ''                    # Set to path of existing .zip model to resume
-save_file = 'trained_agent_3.zip'  # Where to save the trained model
+save_file = f'agents/trained_agent_{time.strftime("%Y-%m-%d_%H-%M-%S")}.zip'  # Where to save the trained model
 
 # -------------------------------------------------------------------------
 # 1. DEFINE REINFORCEMENT LEARNING ENVIRONMENT
@@ -82,8 +119,11 @@ else:
 # 3. TRAINING LOOP
 # -------------------------------------------------------------------------
 # Instantiate the callback to log secrecy rate metrics to tensorboard
-metrics_callback = CustomMetricsCallback()
+stop_event = threading.Event()
+metrics_callback = CustomMetricsCallback(config=config, stop_event=stop_event)
 
+_start_keyboard_listener(stop_event)
+print("Press 'v' to toggle verbose output. Press 'q' to stop training and save.")
 print('Starting Training...')
 model.learn(
     total_timesteps=total_timesteps,
