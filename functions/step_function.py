@@ -88,9 +88,6 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
     # 5. Normalize Power (Norm = 1)
     W = response_vector / np.linalg.norm(response_vector)
 
-    # # SNAP TO REALITY: Find the physically closest codebook index to ideal location
-    # distances_to_codebook = np.linalg.norm(config.beam_focal_locs - ideal_point, axis=1)
-    # next_beam_idx = int(np.argmin(distances_to_codebook))
 
     # # 2. Update beam & power splitting factor from codebooks
     # W = config.w_beam_codebook[:, next_beam_idx].reshape(-1, 1)  # (Nt, 1)
@@ -100,9 +97,9 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
     P_s = config.P_total_watts * psf
     P_an = config.P_total_watts * (1 - psf)
 
-    # 4. Get channels for Bob and Eve
-    h_bob = get_channel(config, logged_signals.bob_loc)  # (Nt, 1)
-    h_eve = get_channel(config, logged_signals.eve_loc)  # (Nt, 1)
+    # 4. Get channels for Bob and Eve (use per-episode NLOS vectors for block fading)
+    h_bob = get_channel(config, logged_signals.bob_loc)
+    h_eve = get_channel(config, logged_signals.eve_loc)
 
     Nt = config.Nt
 
@@ -150,15 +147,14 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
 
     # 11. Reward
     SR = secrecy_rate      # Secrecy rate component
-    k = 0.02
-    penalty_distance = 40 # Distance at which the bonus becomes negative
-    close_to_bob_bonus = (np.exp(-dist_to_bob * k) - np.exp(-penalty_distance * k))/(1 - np.exp(-penalty_distance * k))  # Bonus for being closer to Bob than Eve
-    reward = SR + 15*close_to_bob_bonus
-    reward /= 35 # Normalization factor to keep rewards in a reasonable range [0, 1]
+    c1 = 15
+    alpha = 0.05
+    close_to_bob_bonus = np.exp(-alpha * dist_to_bob) # Bonus for being closer to Bob than Eve
+    reward = SR
+    reward /= 20 # Normalization factor to keep rewards in a reasonable range [0, 1]
 
     is_done = False
 
-    # print(f"[SR={SR:.4f}, db={db:.4f}, de={de:.4f}, bonus={close_to_bob_bonus:.2f}, R={reward:.4f}, psf={next_psf:.2f}]")
     if _verbose:
         print(f"[VERBOSE] Reward: {reward:.4f} | PSF: {psf:.3f} | FocalPt: ({current_focus_point[0]:.2f}, 0, {current_focus_point[2]:.2f}) | Dist2Bob: {dist_to_bob:.2f}m")
 
@@ -209,7 +205,9 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
     info = {
         "secrecy_rate": secrecy_rate,
         "dist_to_bob": dist_to_bob,
-        "dist_to_eve": dist_to_eve
+        "dist_to_eve": dist_to_eve,
+        "bob_loc": logged_signals.bob_loc,
+        "eve_loc": logged_signals.eve_loc,
     }
 
     return next_obs, reward, is_done, logged_signals, info

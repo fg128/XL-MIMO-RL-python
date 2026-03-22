@@ -5,6 +5,7 @@ ENV/
 __pycache__/
 *.pyc
 .venv
+*.png
 /logs
 /training_results
 .DS_Store

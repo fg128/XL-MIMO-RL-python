@@ -128,12 +128,13 @@ def visualise(W: ndarray, psf: float, bx: float, bz: float, ex: float, ez: float
     plt.savefig(save_path, bbox_inches='tight')
     plt.close(fig)
 
-    # Also save the config as a text file in the same folder (once per run)
-    config_log = os.path.join(run_dir, "settings.txt")
-    if not os.path.exists(config_log):
-        with open(config_log, "w") as f:
-            f.write(f"Run started at: {datetime.now()}\n")
-            f.write(f"Antennas: {config.Nt}\n")
-            f.write(f"Resolution: {config.resolution}\n")
+    # Open config.yaml and copy and save to run_dir for reference
+    config_path = os.path.join(os.path.dirname(__file__), '..', 'config.yaml')
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            config_content = f.read()
+        with open(os.path.join(run_dir, 'config.yaml'), 'w') as f:
+            f.write(config_content)
+
 
     print(f"Plot saved to {save_path}")

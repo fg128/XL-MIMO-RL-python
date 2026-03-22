@@ -20,8 +20,8 @@ from functions.step_function import start_verbose_toggle
 # -------------------------------------------------------------------------
 # Configuration
 # -------------------------------------------------------------------------
-model_file = ''                    # Set to path of existing .zip model to resume
-save_file = 'trained_agent_3.zip'  # Where to save the trained model
+model_file = 'checkpoints/SAC_11_79578.zip'                    # Set to path of existing .zip model to resume
+save_file = 'trained_agent.zip'  # Where to save the trained model
 
 # -------------------------------------------------------------------------
 # 1. DEFINE REINFORCEMENT LEARNING ENVIRONMENT
@@ -45,7 +45,7 @@ else:
 
     # Epsilon decay: MATLAB EpsilonDecay=1e-4 per step
     # ~9500 steps to go from 1.0 to 0.05
-    exploration_fraction = 50_000 / total_timesteps
+    # exploration_fraction = 50_000 / total_timesteps
     log_dir = "./logs/"
 
     model = SAC(
@@ -78,7 +78,7 @@ else:
 # 3. TRAINING LOOP
 # -------------------------------------------------------------------------
 # Instantiate the callback to log secrecy rate metrics to tensorboard
-metrics_callback = CustomMetricsCallback()
+metrics_callback = CustomMetricsCallback(config=config)
 
 start_verbose_toggle()
 print("Press 'v' during training to toggle verbose output. Press 'c' to save a checkpoint.")
