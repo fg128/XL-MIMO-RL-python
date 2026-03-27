@@ -6,6 +6,8 @@ __pycache__/
 *.pyc
 .venv
 *.png
+*.csv
+*.pth
 /logs
 /training_results
 .DS_Store
