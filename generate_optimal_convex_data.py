@@ -4,7 +4,6 @@ import numpy as np
 import traceback
 
 from tqdm import tqdm
-
 from SCA_GCC_convex import XLMIMO_System
 
 

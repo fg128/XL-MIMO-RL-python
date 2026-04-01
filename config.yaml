@@ -2,14 +2,14 @@
 
 # General
 fc: 28.0e+9           # Carrier frequency (Hz)
-Nt: 1024              # Number of antennas
+Nt: 256              # Number of antennas
 max_x: 70             # Maximum +/- lateral simulation distance (m)
 max_z: 70             # Maximum simulation depth (m)
 resolution: 0.5       # Resolution of probing
 P_total_watts: 0.1     # Total transmit power (W)
-show_plot_every_nth_steps: 5000
-max_episodes: 2000
-max_steps_per_episode: 100
+show_plot_every_nth_steps: 1
+max_episodes: 1
+max_steps_per_episode: 1
 
 # Max model steps
 max_r_step: 20       # Meters, max change in focal point position per step
@@ -17,10 +17,16 @@ max_theta_step: 0.05 # Radians, ~2.8 degrees
 max_psf_step: 0.1    # Linear, max change in power-splitting factor per step (0.2 corresponds to 20% change)
 
 # Noise
-BW: 100.0e+6          # Bandwidth (Hz)
-NF_dB: 10             # Noise figure (dB)
+BW: 20.0e+6          # Bandwidth (Hz)
+NF_dB: 5             # Noise figure (dB)
 T_temp: 290           # Noise temperature (K)
 
 # Codebook
 psf_N: 10             # 1/N linear spacing of power-splitting factor codebook
 size_cb: 1024         # Size of beam-forming codebook
+
+vae_model_path: 'checkpoints/w_matrix_full_vae_epoch_400.pth'
+sac_model_path: 'sac_pretrained_brain.zip'
+scaler_path: 'xlmimo_w_scaler.pkl'
+save_file_path: 'SAC_VAE_trained_agent.zip'  # Where to save the trained model
+num_cores: 1          # Number of CPU cores to use for training (set to 1 for single-core, or more for parallel training)

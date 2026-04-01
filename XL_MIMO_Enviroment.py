@@ -32,18 +32,18 @@ class XLMIMOEnv(gym.Env):
 
         self.config = config if config is not None else Config(yaml_path='config.yaml')
 
-        # Observation space: [beam_focal_r, beam_focal_theta, psf, delta_bob_r, delta_bob_theta, delta_eve_r, delta_eve_theta]
+        # Observation space: [bob_x_norm, bob_z_norm, eve_x_norm, eve_z_norm]
         self.observation_space = spaces.Box(
-            low=np.array([-1, 0, 0, -1, -1, -1, -1], dtype=np.float32),
-            high=np.array([+1, +1, +1, +1, +1, +1, +1], dtype=np.float32),
+            low=np.array([-1, -1, -1, -1], dtype=np.float32),
+            high=np.array([+1, +1, +1, +1], dtype=np.float32),
             dtype=np.float32,
         )
 
-        # Action space : [delta_ideal_r, delta_ideal_theta, delta_psf]
+        # Action space : [16 latents space dimensions, power splitting factor]
         self.action_space = spaces.Box(
             low=-1.0,
             high=1.0,
-            shape=(3,),
+            shape=(17,),
             dtype=np.float32,
         )
 

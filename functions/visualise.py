@@ -50,7 +50,7 @@ def visualise(W: ndarray, psf: float, bx: float, bz: float, ex: float, ez: float
         ex, ez: Eve's x, z coordinates.
         config: Config object.
     """
-    W = np.asarray(W).reshape(-1, 1)
+    # W = np.asarray(W).reshape(-1, 1)
 
     # 1. Simulate Field Response
     x_range = np.arange(-config.max_x, config.max_x + config.resolution, config.resolution)

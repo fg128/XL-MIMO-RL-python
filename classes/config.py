@@ -1,11 +1,16 @@
 import os
 from typing import Any, cast
 
+import joblib
+import joblib
+import torch
+import torch
 import numpy as np
 import yaml
 from scipy.constants import speed_of_light, Boltzmann
 
 from functions.codebook import codebook
+from vae import XLMIMO_VAE
 
 
 class Config:
@@ -42,6 +47,8 @@ class Config:
         self.max_psf_step = raw['max_psf_step']
         self.max_episodes = raw['max_episodes']
         self.max_steps_per_episode = raw['max_steps_per_episode']
+        self.total_timesteps = self.max_episodes * self.max_steps_per_episode
+        self.num_cores = raw['num_cores']
 
 
         # -----------------------------------------------------------------
@@ -74,3 +81,18 @@ class Config:
         )
         self.w_beam_codebook = w_beam_codebook
         self.beam_focal_locs = grid_coords
+
+        # -----------------------------------------------------------------
+        # 4. MODEL LOADING
+        # -----------------------------------------------------------------   
+        self.vae_model_path = raw['vae_model_path']
+        self.sac_model_path = raw['sac_model_path']
+        self.scaler_path = raw['scaler_path']
+        self.save_file_path = raw['save_file_path']
+
+        print("\nLoading VAE and Scaler...")
+        self.scaler = joblib.load(self.scaler_path)
+        
+        self.vae = XLMIMO_VAE(input_dim=512, latent_dim=16)
+        self.vae.load_state_dict(torch.load(self.vae_model_path, map_location=torch.device('cpu')))
+        self.vae.eval()

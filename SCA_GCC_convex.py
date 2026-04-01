@@ -65,7 +65,6 @@ class XLMIMO_System:
 
         return H_LUE, H_EUE, lue_coords, eue_coords
 
-    # ... [Keep calculate_secrecy_rate, optimize_power_allocation_GSS, and optimize_beamfocusing_SCA exactly the same] ...
     def calculate_secrecy_rate(self, H_LUE, H_EUE, W, epsilon):
         min_rate = np.inf
         H_b_pinv = np.linalg.pinv(H_LUE)
@@ -111,6 +110,7 @@ class XLMIMO_System:
         return (b + a) / 2
 
     def optimize_beamfocusing_SCA(self, H_LUE, H_EUE, W_prev, epsilon):
+        print(H_LUE.shape, H_EUE.shape, W_prev.shape)
         W = cp.Variable((self.N_b, self.K), complex=True)
         xi = cp.Variable(nonneg=True)
         constraints = [cp.sum(cp.sum_squares(cp.abs(W))) <= self.K]
@@ -240,7 +240,7 @@ class XLMIMO_System:
         # print(f"Optimization completed in {t1 - t0:.2f} seconds.")
 
         # self.visualize_beamfocusing(W_t, epsilon_t, lue_coords, eue_coords)
-        return W_t, epsilon_t,current_rate
+        return W_t, epsilon_t, current_rate
 
     def visualize_beamfocusing(self, W, epsilon, lue_coords, eue_coords):
         """Generates a 2D Spatial Heatmap of the Signal Power."""

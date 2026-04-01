@@ -14,8 +14,8 @@ class CustomMetricsCallback(BaseCallback):
 
         if 'secrecy_rate' in info:
             self.logger.record('metrics/secrecy_rate', info['secrecy_rate'])
-            self.logger.record('metrics/dist_to_bob', info['dist_to_bob'])
-            self.logger.record('metrics/dist_to_eve', info['dist_to_eve'])
+            # self.logger.record('metrics/dist_to_bob', info['dist_to_bob'])
+            # self.logger.record('metrics/dist_to_eve', info['dist_to_eve'])
 
         # At episode end, compute and log MRT and FPA baseline secrecy rates
         done = self.locals['dones'][0]

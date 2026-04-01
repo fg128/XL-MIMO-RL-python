@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import StandardScaler
@@ -49,22 +50,33 @@ class XLMIMO_VAE(nn.Module):
         
         # ENCODER: Base feature extraction
         self.encoder_base = nn.Sequential(
-            nn.Linear(input_dim, 256),
+            nn.Linear(input_dim, 512),
+            nn.LayerNorm(512),
             nn.LeakyReLU(0.2),
-            nn.Linear(256, 64),
+
+            nn.Linear(512, 256),
+            nn.LayerNorm(256),
+            nn.LeakyReLU(0.2),
+
+            nn.Linear(256, 128),
+            nn.LayerNorm(128),
             nn.LeakyReLU(0.2)
         )
         
         # ENCODER: Split into Mean (mu) and Variance (logvar)
-        self.fc_mu = nn.Linear(64, latent_dim)
-        self.fc_logvar = nn.Linear(64, latent_dim)
+        self.fc_mu = nn.Linear(128, latent_dim)
+        self.fc_logvar = nn.Linear(128, latent_dim)
         
         # DECODER: Reconstruct the W matrix from the latent vector
         self.decoder = nn.Sequential(
-            nn.Linear(latent_dim, 64),
+            nn.Linear(latent_dim, 128),
+            nn.LayerNorm(128),
             nn.LeakyReLU(0.2),
-            nn.Linear(64, 256),
+            
+            nn.Linear(128, 256),
+            nn.LayerNorm(256),
             nn.LeakyReLU(0.2),
+
             nn.Linear(256, input_dim) # Linear output matching scaled data
         )
 
@@ -85,28 +97,33 @@ class XLMIMO_VAE(nn.Module):
 
     def forward(self, x):
         mu, logvar = self.encode(x)
-        z = self.reparameterize(mu, logvar)
+        logvar = torch.clamp(logvar, -5, 5)
+        if self.training:
+            z = self.reparameterize(mu, logvar)
+        else:
+            z = mu
+        print(f"DEBUG: mu={mu}, logvar={logvar}, z={z}") # Debugging line to check values
+
         reconstructed_x = self.decode(z)
         return reconstructed_x, mu, logvar
 
 # -----------------------------------------
 # 3. VAE Loss Function (MSE + KL Divergence)
 # -----------------------------------------
-def vae_loss_function(recon_x, x, mu, logvar, beta=0.01):
-    """
-    beta: Controls the weight of the KL-Divergence penalty. 
-    If beta is too high, the decoder ignores the latent space (Posterior Collapse).
-    If beta is too low, it acts like a standard autoencoder.
-    """
-    # 1. Reconstruction Loss (How well did we rebuild the W matrix?)
-    recon_loss = nn.MSELoss(reduction='mean')(recon_x, x)
+def vae_loss_function(recon_x, x, mu, logvar, beta=0.2, gamma=10.0):
+    # 1. MSE Loss (Sum across features, Mean across batch)
+    mse_loss = F.mse_loss(recon_x, x, reduction='none')
+    mse_loss = torch.sum(mse_loss, dim=1).mean()
     
-    # 2. KL Divergence (How close is our latent space to a standard Normal distribution?)
-    # KLD = -0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-    kld = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
+    # 2. KLD Loss (Sum across latents, Mean across batch)
+    kld_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1).mean()
     
-    total_loss = recon_loss + (beta * kld)
-    return total_loss, recon_loss, kld
+    # 3. Direction Loss (Mean across batch)
+    cos_sim = F.cosine_similarity(recon_x, x, dim=1)
+    dir_loss = torch.mean(1 - cos_sim) 
+    
+    total_loss = mse_loss + (beta * kld_loss) + (gamma * dir_loss)
+    return total_loss, mse_loss, kld_loss, dir_loss
 
 # -----------------------------------------
 # 4. Training Loop
@@ -117,6 +134,7 @@ def train_vae(csv_filename="xlmimo_oracle_dataset.csv", batch_size=256, epochs=5
 
     dataset = XLMIMODataset(csv_filename)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+    print(f"DataLoader length: {len(dataloader)}")
 
     model = XLMIMO_VAE(input_dim=dataset.feature_dim, latent_dim=latent_dim).to(device)
     optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5) 
@@ -126,6 +144,7 @@ def train_vae(csv_filename="xlmimo_oracle_dataset.csv", batch_size=256, epochs=5
         train_loss = 0.0
         train_recon = 0.0
         train_kld = 0.0
+        train_dir = 0.0
         
         for batch in dataloader:
             batch = batch.to(device)
@@ -135,7 +154,7 @@ def train_vae(csv_filename="xlmimo_oracle_dataset.csv", batch_size=256, epochs=5
             recon_batch, mu, logvar = model(batch)
             
             # Calculate loss
-            loss, recon, kld = vae_loss_function(recon_batch, batch, mu, logvar, beta=0.05)
+            loss, recon, kld, dir_loss = vae_loss_function(recon_batch, batch, mu, logvar, beta=0.4, gamma=30.0)
             
             # Backward pass
             loss.backward()
@@ -144,12 +163,25 @@ def train_vae(csv_filename="xlmimo_oracle_dataset.csv", batch_size=256, epochs=5
             train_loss += loss.item()
             train_recon += recon.item()
             train_kld += kld.item()
+            train_dir += dir_loss.item()
             
         avg_loss = train_loss / len(dataloader)
         avg_recon = train_recon / len(dataloader)
         avg_kld = train_kld / len(dataloader)
+        avg_dir = train_dir / len(dataloader)
+
+        print(f"Epoch [{epoch+1}/{epochs}] | Total: {avg_loss:.4f} | Recon: {avg_recon:.4f} | KLD: {avg_kld:.4f} | Dir: {avg_dir:.4f} | mean {mu.mean().item():.4f} | std {mu.std().item():.4f}")
+
+        if (epoch + 1) % 100 == 0:
+            os.makedirs("checkpoints", exist_ok=True) # Creates folder if it doesn't exist
+            
+            full_path = f"checkpoints/w_matrix_full_vae_epoch_{epoch+1}.pth"
+            dec_path = f"checkpoints/w_matrix_vae_decoder_epoch_{epoch+1}.pth"
+            
+            torch.save(model.state_dict(), full_path)
+            torch.save(model.decoder.state_dict(), dec_path)
+            print(f"--> Saved checkpoint: {full_path}")
         
-        print(f"Epoch [{epoch+1}/{epochs}] | Total: {avg_loss:.4f} | Recon: {avg_recon:.4f} | KLD: {avg_kld:.4f}")
 
     # Save full model and decoder
     torch.save(model.state_dict(), 'w_matrix_full_vae.pth')

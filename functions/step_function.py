@@ -1,6 +1,7 @@
 import sys
 import select
 import termios
+from time import time
 import tty
 import threading
 import numpy as np
@@ -11,6 +12,7 @@ from functions.get_channel import get_channel
 from classes.config import Config
 from classes.logged_signals import LoggedSignals
 from functions.visualise import visualise
+from test_sac_pretained import get_sac_output
 
 # Global toggles
 _step_count = 0
@@ -65,39 +67,14 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
     _step_count += 1
 
     # 1. Execute action
-    ideal_r, ideal_theta, ideal_psf = do_action(action, logged_signals, config)
-
-    # Convert ideal polar to ideal cartesian to search the codebook easy
-    ideal_x = ideal_r * np.sin(ideal_theta)
-    ideal_z = ideal_r * np.cos(ideal_theta)
-    current_focus_point = np.array([ideal_x, 0, ideal_z])
-
-    # --- USW Weight Calculation ---
-    # 1. Distance from every antenna to this focal point
-    dist_from_target_to_antennas = np.sqrt(
-        np.sum((config.pos - current_focus_point[:, np.newaxis]) ** 2, axis=0)
-    )
-
-    # 2. Distance from array center to focal point (Reference)
-    # r_center = np.linalg.norm(current_focus_point)
-
-    # 3. Calculate Phase (USW Model) [Cite: Eq 20]
-    # We use (d_vec - r_center) to normalize phase at the array center
-    response_vector = np.exp(-1j * config.k * dist_from_target_to_antennas)
-
-    # 5. Normalize Power (Norm = 1)
-    W = response_vector / np.linalg.norm(response_vector)
-
-
-    # # 2. Update beam & power splitting factor from codebooks
-    # W = config.w_beam_codebook[:, next_beam_idx].reshape(-1, 1)  # (Nt, 1)
-    psf = ideal_psf
+    # W, psf = get_sac_output(None, logged_signals.bob_loc, logged_signals.eve_loc, config.vae, config.scaler, action=action)
+    W = np.load('my_data.npy').conj()
+    psf = 0.98
 
     # 3. Power allocation between signal and AN
     P_s = config.P_total_watts * psf
-    P_an = config.P_total_watts * (1 - psf)
-
-    # 4. Get channels for Bob and Eve (use per-episode NLOS vectors for block fading)
+    P_an = config.P_total_watts * (1 - psf) 
+   # 4. Get channels for Bob and Eve (use per-episode NLOS vectors for block fading)
     h_bob = get_channel(config, logged_signals.bob_loc)
     h_eve = get_channel(config, logged_signals.eve_loc)
 
@@ -105,24 +82,8 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
 
     # 5. Transmitted signal sent
     V = np.eye(Nt) - (h_bob @ h_bob.conj().T) / (np.linalg.norm(h_bob)**2) # Null space of Bob
-    # s = (np.random.randn() + 1j * np.random.randn()) / np.sqrt(2) # Transmitted symbol
-    # z = (np.random.randn(Nt, 1) + 1j * np.random.randn(Nt, 1)) / np.sqrt(2) #  Random noise vector
-    # x = np.sqrt(P_s)*W*s + np.sqrt(P_an)*(V @ z) # Transmitted signal
 
-    # 6. Received signals
-    # sigma_bob = np.sqrt(config.noise_power_watts / 2)
-    # n_bob = sigma_bob * (np.random.randn() + 1j * np.random.randn())
-    # y_bob = (h_bob.conj().T @ x).item() + n_bob
-
-    # sigma_eve = np.sqrt(config.noise_power_watts / 2)
-    # n_eve = sigma_eve * (np.random.randn() + 1j * np.random.randn())
-    # y_eve = (h_eve.conj().T @ x).item() + n_eve
-
-    # 7. Received powers
-    # rx_pwr_bob = np.abs(y_bob) ** 2
-    # rx_pwr_eve = np.abs(y_eve) ** 2
-
-    # Analytical signal power (Use analytical power to avoid noise with real recieved signal to trian the DQN better)
+    # Analytical signal power
     sig_pwr_bob = P_s * np.abs((h_bob.conj().T @ W).item())**2
     sig_pwr_eve = P_s * np.abs((h_eve.conj().T @ W).item())**2
 
@@ -132,82 +93,45 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
     an_leakage_eve = P_an * (np.linalg.norm(h_eve.conj().T @ V) ** 2).item()
 
     # 8. SINR (Signal to Interference plus Noise Ratio)
+    print(f"Signal Power at Bob: {sig_pwr_bob:.4e} W | AN Leakage at Bob: {an_leakage_bob:.4e} W | Noise Power: {config.noise_power_watts:.4e} W")
     SINR_bob = sig_pwr_bob / (config.noise_power_watts + an_leakage_bob)
     SINR_eve = sig_pwr_eve / (config.noise_power_watts + an_leakage_eve)
 
     # 9. Secrecy rate
     rate_bob = np.log2(1 + SINR_bob)
     rate_eve = np.log2(1 + SINR_eve)
+    print(f"Bob Rate: {rate_bob:.4f} bps/Hz | Eve Rate: {rate_eve:.4f} bps/Hz")
+
     secrecy_rate = max(0.0, rate_bob - rate_eve)
 
     # 10. Distance from beam focal point to Bob and Eve
     # current_focus_point = config.beam_focal_locs[next_beam_idx, :]
-    dist_to_bob = np.linalg.norm(current_focus_point - logged_signals.bob_loc)
-    dist_to_eve = np.linalg.norm(current_focus_point - logged_signals.eve_loc)
+    # dist_to_bob = np.linalg.norm(current_focus_point - logged_signals.bob_loc)
+    # dist_to_eve = np.linalg.norm(current_focus_point - logged_signals.eve_loc)
 
     # 11. Reward
-    SR = secrecy_rate      # Secrecy rate component
-    c1 = 15
-    alpha = 0.05
-    close_to_bob_bonus = np.exp(-alpha * dist_to_bob) # Bonus for being closer to Bob than Eve
-    reward = SR
-    reward /= 20 # Normalization factor to keep rewards in a reasonable range [0, 1]
+    reward = secrecy_rate
+    print(f"Secrecy Rate: {secrecy_rate:.4f} bps/Hz")
 
     is_done = False
 
-    if _verbose:
-        print(f"[VERBOSE] Reward: {reward:.4f} | PSF: {psf:.3f} | FocalPt: ({current_focus_point[0]:.2f}, 0, {current_focus_point[2]:.2f}) | Dist2Bob: {dist_to_bob:.2f}m")
+    # if _verbose:
+        # print(f"[VERBOSE] Reward: {reward:.4f} | PSF: {psf:.3f} | Bob Rate: {rate_bob:.4f} bps/Hz | Eve Rate: {rate_eve:.4f} bps/Hz | Secrecy Rate: {secrecy_rate:.4f} bps/Hz | Bob AN Leakage: {an_leakage_bob:.4e} W | Eve AN Leakage: {an_leakage_eve:.4e} W   | Bob Loc: ({logged_signals.bob_loc[0]:.1f}, {logged_signals.bob_loc[2]:.1f}) | Eve Loc: ({logged_signals.eve_loc[0]:.1f}, {logged_signals.eve_loc[2]:.1f})")
 
     # 12. Next observation
     bx, bz = logged_signals.bob_loc[0], logged_signals.bob_loc[2]
     ex, ez = logged_signals.eve_loc[0], logged_signals.eve_loc[2]
-    cx, cz = current_focus_point[0], current_focus_point[2]
 
-    # Absolute polar coordinates
-    r_beam = np.sqrt(cx**2 + cz**2)
-    theta_beam = np.arctan2(cx, cz)
-    r_bob = np.sqrt(bx**2 + bz**2)
-    theta_bob = np.arctan2(bx, bz)
-    r_eve = np.sqrt(ex**2 + ez**2)
-    theta_eve = np.arctan2(ex, ez)
-
-    # Calculate polar deltas (How far is beam from Bob/Eve?)
-    delta_r_bob = r_bob - r_beam
-    delta_theta_bob = theta_bob - theta_beam
-
-    delta_r_eve = r_eve - r_beam
-    delta_theta_eve = theta_eve - theta_beam
-
-    # Normalization constants for stabilty
-    max_r = np.sqrt(config.max_x**2 + config.max_z**2)
-    max_theta_sweep = np.pi / 2 # ~90 degrees is plenty for the delta spread
-
-    next_obs = np.array([
-        r_beam / max_r,                  # Absolute Beam Depth
-        theta_beam / max_theta_sweep,    # Absolute Beam Angle
-        psf,                             # Current Power Split
-        delta_r_bob / max_r,
-        delta_theta_bob / max_theta_sweep,
-        delta_r_eve / max_r,
-        delta_theta_eve / max_theta_sweep,
-    ], dtype=np.float32)
 
     if _step_count % config.show_plot_every_nth_steps == 0:
         visualise(W, psf, bx, bz, ex, ez, config, _step_count)
-        # print(f"PSF: {psf}, Beam IDX: {next_beam_idx}")
-        print(f"Focus Point: {current_focus_point}")
-
-    # 15. Pass info to next iteration
-    logged_signals.ideal_r = ideal_r
-    logged_signals.ideal_theta = ideal_theta
-    logged_signals.ideal_psf = ideal_psf
 
     info = {
         "secrecy_rate": secrecy_rate,
-        "dist_to_bob": dist_to_bob,
-        "dist_to_eve": dist_to_eve,
         "bob_loc": logged_signals.bob_loc,
         "eve_loc": logged_signals.eve_loc,
     }
 
-    return next_obs, reward, is_done, logged_signals, info
+    is_done = True # Each episode is just 1 step to simplify training and focus on learning the optimal beamforming for each scenario
+
+    return None, reward, is_done, logged_signals, info
