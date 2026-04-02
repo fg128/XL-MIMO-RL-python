@@ -102,7 +102,6 @@ class XLMIMO_VAE(nn.Module):
             z = self.reparameterize(mu, logvar)
         else:
             z = mu
-        print(f"DEBUG: mu={mu}, logvar={logvar}, z={z}") # Debugging line to check values
 
         reconstructed_x = self.decode(z)
         return reconstructed_x, mu, logvar

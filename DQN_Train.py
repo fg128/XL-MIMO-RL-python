@@ -47,7 +47,6 @@ if __name__ == "__main__":
             env=env,
             device='cpu',
             tensorboard_log=log_dir,
-            
             )
     else:
         print('No existing model found. Creating new DQN Agent...')
@@ -91,10 +90,10 @@ if __name__ == "__main__":
     # 1. Force the model to skip the completely random action warmup phase
     sac_model.learning_starts = 0 
     
-    # 2. Intercept the policy's predict method to ALWAYS force deterministic=True
-    original_predict = sac_model.policy.predict
-    sac_model.policy.predict = lambda obs, state=None, episode_start=None, deterministic=False: original_predict(obs, state, episode_start, deterministic=True)
-    # --- TEMPORARY DEBUGGING BLOCK END ---
+    # # 2. Intercept the policy's predict method to ALWAYS force deterministic=True
+    # original_predict = sac_model.policy.predict
+    # sac_model.policy.predict = lambda obs, state=None, episode_start=None, deterministic=False: original_predict(obs, state, episode_start, deterministic=True)
+    # # --- TEMPORARY DEBUGGING BLOCK END ---
 
     sac_model.learn(
         total_timesteps=config.total_timesteps,
@@ -108,6 +107,6 @@ if __name__ == "__main__":
     # -------------------------------------------------------------------------
     # 4. SAVE AGENT
     # -------------------------------------------------------------------------
-    # save_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), config.save_file_path)
-    # sac_model.save(save_path)
-    # print(f'Agent saved to {save_path}')
+    save_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), config.save_file_path)
+    sac_model.save(save_path)
+    print(f'Agent saved to {save_path}')

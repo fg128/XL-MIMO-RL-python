@@ -7,8 +7,8 @@ max_x: 70             # Maximum +/- lateral simulation distance (m)
 max_z: 70             # Maximum simulation depth (m)
 resolution: 0.5       # Resolution of probing
 P_total_watts: 0.1     # Total transmit power (W)
-show_plot_every_nth_steps: 1
-max_episodes: 1
+show_plot_every_nth_steps: 10000
+max_episodes: 100000
 max_steps_per_episode: 1
 
 # Max model steps
@@ -29,4 +29,4 @@ vae_model_path: 'checkpoints/w_matrix_full_vae_epoch_400.pth'
 sac_model_path: 'sac_pretrained_brain.zip'
 scaler_path: 'xlmimo_w_scaler.pkl'
 save_file_path: 'SAC_VAE_trained_agent.zip'  # Where to save the trained model
-num_cores: 1          # Number of CPU cores to use for training (set to 1 for single-core, or more for parallel training)
+num_cores: 4          # Number of CPU cores to use for training

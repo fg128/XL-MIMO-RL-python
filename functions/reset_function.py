@@ -12,19 +12,22 @@ def reset_function(config: Config):
         initial_obs:    Initial observation vector (6,) float32.
         logged_signals: LoggedSignals object containing environment state.
     """
+    # Fixed locations for testing:
+    # bob_loc = np.array([-52.4, 0, 44.3])
+    # eve_loc = np.array([32.7, 0, 13.6])
+    # bx, _, bz = bob_loc
+    # ex, _, ez = eve_loc
+
     # 1. Randomize Locations
-    # bx = (np.random.rand() - 0.5) * 2 * config.max_x
-    # bz = 20 + np.random.rand() * (config.max_z - 20)
-    # bob_loc = np.array([10, 0.0, 15])
+    bx = (np.random.rand() - 0.5) * 2 * config.max_x
+    bz = 20 + np.random.rand() * (config.max_z - 20)
 
-    # ex = bx + (np.random.rand() - 0.5) * 20   # Eve +/-10m near Bob x
-    # ez = bz + (np.random.rand() - 0.5) * 20    # Eve +/-10m near Bob z
-    # eve_loc = np.array([10, 0.0, 12])
+    ex = bx + (np.random.rand() - 0.5) * 20   # Eve +/-10m near Bob x
+    ez = bz + (np.random.rand() - 0.5) * 20    # Eve +/-10m near Bob z
 
-    bob_loc = np.array([-52.4, 0, 44.3])
-    eve_loc = np.array([32.7, 0, 13.6])
-    bx, _, bz = bob_loc
-    ex, _, ez = eve_loc
+    bob_loc = np.array([bx, 0.0, bz])
+    eve_loc = np.array([ex, 0.0, ez])
+
 
     logged_signals = LoggedSignals(
         bob_loc=bob_loc,

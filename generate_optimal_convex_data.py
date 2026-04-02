@@ -1,10 +1,12 @@
 import csv
 import os
-import numpy as np
 import traceback
 
+import numpy as np
 from tqdm import tqdm
-from SCA_GCC_convex import XLMIMO_System
+
+from classes.XLMIMO_System import XLMIMO_System
+from classes.config import Config
 
 
 def generate_oracle_dataset(num_episodes=100000, filename="xlmimo_oracle_dataset.csv"):
@@ -27,6 +29,7 @@ def generate_oracle_dataset(num_episodes=100000, filename="xlmimo_oracle_dataset
         print(f"Starting Data Generation for {num_episodes} episodes...")
         print("Data is saved to disk continuously. You can stop the script safely at any time (Ctrl+C).")
         print("-" * 65)
+        config = Config()  # Load config once at the start
 
         for ep in tqdm(range(num_episodes), desc="Generating Episodes"):
             # 3. Randomize User Locations (Based on your grid limits)
@@ -42,9 +45,9 @@ def generate_oracle_dataset(num_episodes=100000, filename="xlmimo_oracle_dataset
             
             try:
                 # 4. Initialize Environment and Run Optimization
-                xl_mimo = XLMIMO_System(N_bx=N_bx, bob_loc=bob_loc, eve_loc=eve_loc)
+                xl_mimo = XLMIMO_System(bob_loc=bob_loc, eve_loc=eve_loc, config=config)
                 W_t, epsilon_t, secrecy_rate = xl_mimo.run_alternating_optimization()
-                # print(f"\n[Episode {ep+1}/{num_episodes}] Bob: ({bob_x:.1f}, {bob_z:.1f}) | Eve: ({eve_x:.1f}, {eve_z:.1f}) | Epsilon: {epsilon_t:.3f} | Secrecy Rate: {secrecy_rate:.4f} bps/Hz")
+
                 # If SCA totally fails and returns None, skip this episode
                 if W_t is None:
                     print("Optimization returned None. Skipping to next episode.")

@@ -67,14 +67,14 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
     _step_count += 1
 
     # 1. Execute action
-    # W, psf = get_sac_output(None, logged_signals.bob_loc, logged_signals.eve_loc, config.vae, config.scaler, action=action)
-    W = np.load('my_data.npy').conj()
-    psf = 0.98
+    W, psf = get_sac_output(None, logged_signals.bob_loc, logged_signals.eve_loc, config.vae, config.scaler, action=action)
+    W = W.conj()
 
     # 3. Power allocation between signal and AN
     P_s = config.P_total_watts * psf
     P_an = config.P_total_watts * (1 - psf) 
-   # 4. Get channels for Bob and Eve (use per-episode NLOS vectors for block fading)
+    
+    # 4. Get channels for Bob and Eve (use per-episode NLOS vectors for block fading)
     h_bob = get_channel(config, logged_signals.bob_loc)
     h_eve = get_channel(config, logged_signals.eve_loc)
 
@@ -93,25 +93,20 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
     an_leakage_eve = P_an * (np.linalg.norm(h_eve.conj().T @ V) ** 2).item()
 
     # 8. SINR (Signal to Interference plus Noise Ratio)
-    print(f"Signal Power at Bob: {sig_pwr_bob:.4e} W | AN Leakage at Bob: {an_leakage_bob:.4e} W | Noise Power: {config.noise_power_watts:.4e} W")
+    # print(f"Signal Power at Bob: {sig_pwr_bob:.4e} W | AN Leakage at Bob: {an_leakage_bob:.4e} W | Noise Power: {config.noise_power_watts:.4e} W")
     SINR_bob = sig_pwr_bob / (config.noise_power_watts + an_leakage_bob)
     SINR_eve = sig_pwr_eve / (config.noise_power_watts + an_leakage_eve)
 
     # 9. Secrecy rate
     rate_bob = np.log2(1 + SINR_bob)
     rate_eve = np.log2(1 + SINR_eve)
-    print(f"Bob Rate: {rate_bob:.4f} bps/Hz | Eve Rate: {rate_eve:.4f} bps/Hz")
+    # print(f"Bob Rate: {rate_bob:.4f} bps/Hz | Eve Rate: {rate_eve:.4f} bps/Hz")
 
     secrecy_rate = max(0.0, rate_bob - rate_eve)
 
-    # 10. Distance from beam focal point to Bob and Eve
-    # current_focus_point = config.beam_focal_locs[next_beam_idx, :]
-    # dist_to_bob = np.linalg.norm(current_focus_point - logged_signals.bob_loc)
-    # dist_to_eve = np.linalg.norm(current_focus_point - logged_signals.eve_loc)
-
     # 11. Reward
     reward = secrecy_rate
-    print(f"Secrecy Rate: {secrecy_rate:.4f} bps/Hz")
+    # print(f"Secrecy Rate: {secrecy_rate:.4f} bps/Hz")
 
     is_done = False
 
