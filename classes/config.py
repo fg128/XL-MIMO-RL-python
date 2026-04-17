@@ -53,7 +53,7 @@ class Config:
         self.T_temp = raw['T_temp']
         self.noise_power_watts = (self.k_B * self.T_temp * self.BW
                                   * 10 ** (self.NF_dB / 10))
-
+        print(f"DEBUG: noise_power_watts={self.noise_power_watts:.2e} W, -96dBm = {10**(-126/10):.2e} W")
         # -----------------------------------------------------------------
         # 3. CODEBOOK CONFIG
         # -----------------------------------------------------------------

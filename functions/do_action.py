@@ -22,7 +22,6 @@ def do_action(action: ndarray, logged_signals: LoggedSignals, config: Config):
     # 1. Scale the continuous actions to physical step sizes
     delta_r = action[0] * config.max_r_step
     delta_theta = action[1] * config.max_theta_step
-    delta_psf = action[2] * config.max_psf_step
 
     # 2. Update the IDEAL continuous state (Internal to the agent)
     max_r = np.sqrt(config.max_x**2 + config.max_z**2)
@@ -30,7 +29,7 @@ def do_action(action: ndarray, logged_signals: LoggedSignals, config: Config):
     # Clip all so not out of bounds
     ideal_r = np.clip(logged_signals.ideal_r + delta_r, 0.1, max_r)
     ideal_theta = np.clip(logged_signals.ideal_theta + delta_theta, -np.pi/2, np.pi/2)
-    ideal_psf = np.clip(logged_signals.ideal_psf + delta_psf, 0.0, 1.0)
+    ideal_psf = float(np.clip((action[2] + 1.0) / 2.0, 0.0, 1.0))
 
     return ideal_r, ideal_theta, ideal_psf
 

@@ -9,7 +9,7 @@ def compute_secrecy_rate(config: Config, bob_loc, eve_loc, phi):
     Nt = config.Nt
 
     # MRT direction with fixed power split
-    
+
     W = h_bob / np.linalg.norm(h_bob)
     P_s  = config.P_total_watts * phi
     P_an = config.P_total_watts * (1 - phi)
@@ -19,7 +19,7 @@ def compute_secrecy_rate(config: Config, bob_loc, eve_loc, phi):
 
     sig_pwr_bob = P_s * np.abs((h_bob.conj().T @ W).item()) ** 2
     sig_pwr_eve = P_s * np.abs((h_eve.conj().T @ W).item()) ** 2
-    print(f"DEBUG: sig_pwr_bob={sig_pwr_bob}, sig_pwr_eve={sig_pwr_eve}")
+    # print(f"DEBUG: sig_pwr_bob={sig_pwr_bob}, sig_pwr_eve={sig_pwr_eve}")
 
     # Bob: h_bob' @ V = 0 by construction, so AN leakage on Bob is zero
     an_leakage_bob = P_an * float(np.linalg.norm(h_bob.conj().T @ V) ** 2)

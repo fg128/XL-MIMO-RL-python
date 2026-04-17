@@ -20,7 +20,7 @@ from functions.step_function import start_verbose_toggle
 # -------------------------------------------------------------------------
 # Configuration
 # -------------------------------------------------------------------------
-model_file = 'checkpoints/SAC_11_79578.zip'                    # Set to path of existing .zip model to resume
+model_file = ''                    # Set to path of existing .zip model to resume
 save_file = 'trained_agent.zip'  # Where to save the trained model
 
 # -------------------------------------------------------------------------

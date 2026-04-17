@@ -33,13 +33,15 @@ import baselines.fpa as fpa_baseline
 DEFAULT_MODEL   = 'trained_agent.zip'
 DIST_MIN        = 0.01          # minimum Eve-Bob separation (m)
 DIST_MAX        = 10.0         # maximum Eve-Bob separation (m)
-N_DISTANCES     = 20           # number of distance points along x-axis
+N_DISTANCES     = 5           # number of distance points along x-axis
 N_TRIALS        = 10           # random scenarios averaged at each distance
 WARMUP_FRAC     = 0.5          # fraction of episode steps discarded as warm-up
 FPA_PHIS        = {            # FPA variants to compare
     r'FPA ($\phi$=0.9)': 0.9,
     r'FPA ($\phi$=0.8)': 0.8,
     r'FPA ($\phi$=0.7)': 0.7,
+    r'FPA ($\phi$=0.5)': 0.5,
+    r'FPA ($\phi$=0.3)': 0.3,
 }
 
 
@@ -159,8 +161,9 @@ def evaluate(model_path):
                 fpa_trials[lbl].append(fpa_sr)
 
             print(bob_loc, eve_loc)
-            xl_mimo = XLMIMO_System(N_bx=1024, N_bz=1, K=1, E=1, bob_loc=bob_loc, eve_loc=eve_loc)
-            convex_sr = xl_mimo.run_alternating_optimization()
+            xl_mimo = XLMIMO_System(K=1, E=1, bob_loc=bob_loc, eve_loc=eve_loc, config=config)
+            W_t, epsilon_t, H_LUE, H_EUE, lue_coords, eue_coords = xl_mimo.run_alternating_optimization()
+            convex_sr = xl_mimo.calculate_secrecy_rate(H_LUE, H_EUE, W_t, epsilon_t, debug=True)
 
         results['SAC'].append(np.mean(sac_trial))
         results['MRT'].append(np.mean(mrt_trial))
@@ -175,6 +178,13 @@ def evaluate(model_path):
     # ----------------------------------------------------------------------- #
     # Plot
     # ----------------------------------------------------------------------- #
+    # Save data as csv
+    with open('evaluation_data.csv', 'w', newline='') as f:
+        header = 'Distance,' + ','.join(results.keys()) + '\n'
+        f.write(header)
+        for i in range(len(distances)):
+            row = f"{distances[i]:.2f}," + ','.join(f"{results[label][i]:.6f}" for label in results) + '\n'
+            f.write(row)
     fig, ax = plt.subplots(figsize=(8, 5))
 
     styles = {
@@ -184,6 +194,8 @@ def evaluate(model_path):
         r'FPA ($\phi$=0.9)':         dict(color='tab:green',  lw=1.5, ls=':',  marker='^', ms=4),
         r'FPA ($\phi$=0.8)':         dict(color='tab:orange', lw=1.5, ls=':',  marker='v', ms=4),
         r'FPA ($\phi$=0.7)':         dict(color='tab:purple', lw=1.5, ls=':',  marker='D', ms=4),
+        r'FPA ($\phi$=0.5)':         dict(color='tab:brown',  lw=1.5, ls=':',  marker='P', ms=4),
+        r'FPA ($\phi$=0.3)':         dict(color='tab:pink',   lw=1.5, ls=':',  marker='X', ms=4),
     }
 
     for label, values in results.items():

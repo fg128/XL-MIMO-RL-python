@@ -17,9 +17,33 @@ def reset_function(config: Config):
     bz = 20 + np.random.rand() * (config.max_z - 20)
     bob_loc = np.array([bx, 0.0, bz])
 
-    ex = bx + (np.random.rand() - 0.5) * 20   # Eve +/-10m near Bob x
-    ez = bz + (np.random.rand() - 0.5) * 20    # Eve +/-10m near Bob z
+    # Inside your reset_function:
+    rand_val = np.random.rand()
+
+    if rand_val < 0.20:
+        # 1. The Extreme Danger Zone (40% of the time)
+        # Force the agent to deal with the 0.0 to 0.3m edge cases
+        dist = np.random.uniform(0.0, 0.3)
+        angle = np.random.uniform(0, 2 * np.pi)
+        ex = bob_loc[0] + dist * np.cos(angle)
+        ez = bob_loc[2] + dist * np.sin(angle)
+    elif rand_val < 0.40:
+        # 2. The Standard Danger Zone (30% of the time)
+        # Keeps the 0.3m to 1.0m memory fresh
+        dist = np.random.uniform(0.3, 1.0)
+        angle = np.random.uniform(0, 2 * np.pi)
+        ex = bob_loc[0] + dist * np.cos(angle)
+        ez = bob_loc[2] + dist * np.sin(angle)
+    else:
+        # 3. Standard Placement (30% of the time)
+        # Keeps the >1.0m memory fresh (Agent already knows this well)
+        ex = (np.random.rand() - 0.5) * 2 * config.max_x
+        ez = 20 + np.random.rand() * (config.max_z - 20)
+
     eve_loc = np.array([ex, 0.0, ez])
+
+    eve_loc = np.array([ex, 0.0, ez])
+    bob_eve_diff = np.linalg.norm(bob_loc - eve_loc)
 
     # 2. Initialize agent randomly
     start_beam_idx = np.random.randint(0, config.size_cb)
@@ -62,6 +86,7 @@ def reset_function(config: Config):
         delta_theta_bob / max_theta_sweep,
         delta_r_eve / max_r,
         delta_theta_eve / max_theta_sweep,
+        np.exp(-bob_eve_diff)
     ], dtype=np.float32)
 
     return initial_obs, logged_signals

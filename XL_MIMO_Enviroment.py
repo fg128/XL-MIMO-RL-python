@@ -34,8 +34,8 @@ class XLMIMOEnv(gym.Env):
 
         # Observation space: [beam_focal_r, beam_focal_theta, psf, delta_bob_r, delta_bob_theta, delta_eve_r, delta_eve_theta]
         self.observation_space = spaces.Box(
-            low=np.array([-1, 0, 0, -1, -1, -1, -1], dtype=np.float32),
-            high=np.array([+1, +1, +1, +1, +1, +1, +1], dtype=np.float32),
+            low=np.array([-1, 0, 0, -1, -1, -1, -1, 0], dtype=np.float32),
+            high=np.array([+1, +1, +1, +1, +1, +1, +1, 1], dtype=np.float32),
             dtype=np.float32,
         )
 

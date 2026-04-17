@@ -146,12 +146,17 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
     dist_to_eve = np.linalg.norm(current_focus_point - logged_signals.eve_loc)
 
     # 11. Reward
-    SR = secrecy_rate      # Secrecy rate component
-    c1 = 15
-    alpha = 0.05
-    close_to_bob_bonus = np.exp(-alpha * dist_to_bob) # Bonus for being closer to Bob than Eve
-    reward = SR
-    reward /= 20 # Normalization factor to keep rewards in a reasonable range [0, 1]
+    SR = secrecy_rate
+    alpha = 0.025
+    close_to_bob_bonus = np.exp(-alpha * dist_to_bob)
+
+    # Anneal the positional bonus over the first half of training so that
+    # late-stage learning is driven purely by secrecy rate.
+    total_training_steps = config.max_episodes * config.max_steps_per_episode
+    progress = min(_step_count / total_training_steps, 1.0)
+    scheduler = max(0.0, 1.0 - 2.0 * progress)
+
+    reward = SR/15 + scheduler*close_to_bob_bonus
 
     is_done = False
 
@@ -182,6 +187,8 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
     max_r = np.sqrt(config.max_x**2 + config.max_z**2)
     max_theta_sweep = np.pi / 2 # ~90 degrees is plenty for the delta spread
 
+    bob_eve_diff = np.linalg.norm(logged_signals.bob_loc - logged_signals.eve_loc)
+
     next_obs = np.array([
         r_beam / max_r,                  # Absolute Beam Depth
         theta_beam / max_theta_sweep,    # Absolute Beam Angle
@@ -190,6 +197,7 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
         delta_theta_bob / max_theta_sweep,
         delta_r_eve / max_r,
         delta_theta_eve / max_theta_sweep,
+        np.exp(-bob_eve_diff)
     ], dtype=np.float32)
 
     if _step_count % config.show_plot_every_nth_steps == 0:
@@ -208,6 +216,7 @@ def step_function(action: ndarray, logged_signals: LoggedSignals, config: Config
         "dist_to_eve": dist_to_eve,
         "bob_loc": logged_signals.bob_loc,
         "eve_loc": logged_signals.eve_loc,
+        "phi": psf
     }
 
     return next_obs, reward, is_done, logged_signals, info
